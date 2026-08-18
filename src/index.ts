@@ -22,7 +22,7 @@ import { SheetsService } from './helpers/sheets';
 import { Utils } from './helpers/utils';
 import { TargetAgent } from './target-agents/base';
 import { AVAILABLE_AGENTS } from './target-agents/index';
-//test
+
 enum MODE {
   FETCH = 0,
   SYNC = 1,
@@ -302,6 +302,37 @@ function updateRowWithResultData(
       if (path.startsWith('!CUSTOM')) {
         const functionName = path.split('.')[1];
 
+        // --- QUICK FIX PATCH START ---
+        // Prevent invocation of built-in globals (eval, Function, Apps Script
+        // services, etc.). Only user-defined top-level functions are intended
+        // to be callable via the !CUSTOM mechanism.
+        const FORBIDDEN_GLOBALS = new Set([
+          'eval',
+          'Function',
+          'setTimeout',
+          'setInterval',
+          'execute',
+          'UrlFetchApp',
+          'ScriptApp',
+          'DriveApp',
+          'SpreadsheetApp',
+          'PropertiesService',
+          'CacheService',
+          'Utilities',
+          'OAuth2',
+          'Logger',
+          'console',
+        ]);
+        if (
+          FORBIDDEN_GLOBALS.has(functionName) ||
+          !GLOBALCTX ||
+          typeof (GLOBALCTX as any)[functionName] !== 'function'
+        ) {
+          throw new Error(
+            `!CUSTOM function '${functionName}' is not an allowed user-defined function`
+          );
+        }
+        // --- QUICK FIX PATCH END ---
         if (GLOBALCTX && GLOBALCTX[functionName]) {
           const columnHeaderHelper = new DynamicColumnHeaders(headers);
 

@@ -30,6 +30,7 @@ const CONFIG = {
             activationFormula: 3,
             updateInterval: 4,
             targetAgent: 5,
+
             targetAction: 6,
             targetIdType: 7,
             targetId: 8,
@@ -82,6 +83,7 @@ class ApiHelper {
         if (!obj || (obj && Object.keys(obj).length === 0))
             return '';
         const prefix = url.includes('?') ? '&' : '?';
+
         return prefix.concat(Object.keys(obj)
             .map(key => {
             if (obj[key] instanceof Array) {
@@ -336,6 +338,7 @@ class DV360 extends TargetAgent {
     constructor() {
         super();
         this.requiredParameters = ['advertiserId'];
+
         this.baseUrl = 'https://displayvideo.googleapis.com/v2';
     }
     process(identifier, type, action, evaluation, params) {
@@ -543,6 +546,7 @@ class GoogleAds extends TargetAgent {
     updateAdStatusById(customerId, ids, status) {
         const ads = this.getAdsById(customerId, ids);
         const path = `customers/${customerId}/adGroupAds:mutate`;
+
         for (const ad of ads) {
             this.updateEntityStatus(path, ad, status);
         }
@@ -821,6 +825,7 @@ function main(mode) {
                 const params = columnHeaderHelper.getMappedValues(row, CONFIG.targetNamespace, false);
                 const targetAgent = getTargetAgent(row[CONFIG.rules.cols.targetAgent]);
                 targetAgent.process(row[CONFIG.rules.cols.targetId], row[CONFIG.rules.cols.targetIdType], row[CONFIG.rules.cols.targetAction], evaluation, params);
+
                 status = `Synchronized (${Utils.getCurrentDateString()})`;
                 SheetsService.getInstance().setCellValue(index + CONFIG.rules.startRow + 1, CONFIG.rules.cols.lastUpdate + 1, String(Date.now()), CONFIG.rules.sheetName);
             }
@@ -867,6 +872,28 @@ function updateRowWithResultData(headers, row, data, group) {
             const path = headers[index].split(DynamicColumnHeaders.namespaceSeparator)[1];
             if (path.startsWith('!CUSTOM')) {
                 const functionName = path.split('.')[1];
+                const FORBIDDEN_GLOBALS = new Set([
+                    'eval',
+                    'Function',
+                    'setTimeout',
+                    'setInterval',
+                    'execute',
+                    'UrlFetchApp',
+                    'ScriptApp',
+                    'DriveApp',
+                    'SpreadsheetApp',
+                    'PropertiesService',
+                    'CacheService',
+                    'Utilities',
+                    'OAuth2',
+                    'Logger',
+                    'console',
+                ]);
+                if (FORBIDDEN_GLOBALS.has(functionName) ||
+                    !GLOBALCTX ||
+                    typeof GLOBALCTX[functionName] !== 'function') {
+                    throw new Error(`!CUSTOM function '${functionName}' is not an allowed user-defined function`);
+                }
                 if (GLOBALCTX && GLOBALCTX[functionName]) {
                     const columnHeaderHelper = new DynamicColumnHeaders(headers);
                     const customParams = columnHeaderHelper.getMappedValues(row, functionName, false);
