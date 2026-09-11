@@ -1,25 +1,21 @@
-/**
- * Copyright 2023 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *       http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright 2024 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
 import * as fs from 'fs';
 import * as path from 'path';
 import * as ts from 'typescript';
 
-// =====================================================================
-// 1. MOCK DEPENDENCIES
-// =====================================================================
 jest.mock('../../src/config', () => ({
   CONFIG: { resultNamespace: 'RESULT' },
   GLOBALCTX: {},
@@ -47,10 +43,6 @@ jest.mock('../../src/helpers/api', () => ({ ApiHelper: jest.fn() }));
 import { GLOBALCTX } from '../../src/config';
 import { DynamicColumnHeaders } from '../../src/helpers/dynamic-column-headers';
 
-// =====================================================================
-// 2. READ AND COMPILE TARGET FILE IN MEMORY
-// =====================================================================
-// Make sure this points to your actual main file (e.g., index.ts or main.ts)
 const targetFilePath = path.resolve(__dirname, '../../src/index.ts');
 const targetDir = path.dirname(targetFilePath);
 const sourceCode = fs.readFileSync(targetFilePath, 'utf8');
@@ -88,15 +80,11 @@ wrapper(
 
 const { updateRowWithResultData } = customModule.exports;
 
-// =====================================================================
-// 3. UNIT TESTS
-// =====================================================================
 describe('updateRowWithResultData - !CUSTOM Function Execution', () => {
   const mockData = { id: 123, status: 'ok' };
   const group = '';
 
   beforeEach(() => {
-    // Added safety check for GLOBALCTX to satisfy TypeScript
     if (GLOBALCTX) {
       Object.keys(GLOBALCTX).forEach(key => delete (GLOBALCTX as any)[key]);
     }
@@ -135,7 +123,6 @@ describe('updateRowWithResultData - !CUSTOM Function Execution', () => {
   });
 
   it('2. should throw an error if the property is undefined or not a function', () => {
-    // Fixed the formatting here so it copies correctly
     const testCases = [
       { name: 'undefinedFunc', value: undefined },
       { name: 'stringVar', value: 'I am a string, not a function' },
