@@ -772,6 +772,23 @@ var MODE;
     MODE[MODE["FETCH_AND_SYNC"] = 2] = "FETCH_AND_SYNC";
 })(MODE || (MODE = {}));
 const targetAgents = {};
+const FORBIDDEN_GLOBALS = new Set([
+    'eval',
+    'Function',
+    'setTimeout',
+    'setInterval',
+    'execute',
+    'UrlFetchApp',
+    'ScriptApp',
+    'DriveApp',
+    'SpreadsheetApp',
+    'PropertiesService',
+    'CacheService',
+    'Utilities',
+    'OAuth2',
+    'Logger',
+    'console',
+]);
 function onOpen() {
     const ui = SpreadsheetApp.getUi();
     ui.createMenu('IFTTA')
@@ -881,11 +898,14 @@ function updateRowWithResultData(headers, row, data, group) {
             const path = headers[index].split(DynamicColumnHeaders.namespaceSeparator)[1];
             if (path.startsWith('!CUSTOM')) {
                 const functionName = path.split('.')[1];
-                if (GLOBALCTX && GLOBALCTX[functionName]) {
-                    const columnHeaderHelper = new DynamicColumnHeaders(headers);
-                    const customParams = columnHeaderHelper.getMappedValues(row, functionName, false);
-                    return GLOBALCTX[functionName](data, customParams);
+                if (FORBIDDEN_GLOBALS.has(functionName) ||
+                    !GLOBALCTX ||
+                    typeof GLOBALCTX[functionName] !== 'function') {
+                    throw new Error(`!CUSTOM function '${functionName}' is not an allowed user-defined function`);
                 }
+                const columnHeaderHelper = new DynamicColumnHeaders(headers);
+                const customParams = columnHeaderHelper.getMappedValues(row, functionName, false);
+                return GLOBALCTX[functionName](data, customParams);
             }
             else {
                 return JPath.getValue(path, data);

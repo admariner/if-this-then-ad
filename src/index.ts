@@ -32,6 +32,24 @@ enum MODE {
 /** @type {Record<string, TargetAgent>} */
 const targetAgents: Record<string, TargetAgent> = {};
 
+const FORBIDDEN_GLOBALS = new Set([
+  'eval',
+  'Function',
+  'setTimeout',
+  'setInterval',
+  'execute',
+  'UrlFetchApp',
+  'ScriptApp',
+  'DriveApp',
+  'SpreadsheetApp',
+  'PropertiesService',
+  'CacheService',
+  'Utilities',
+  'OAuth2',
+  'Logger',
+  'console',
+]);
+
 /**
  * Add custom menu item into the Spreadsheet menu.
  */
@@ -302,18 +320,29 @@ function updateRowWithResultData(
       if (path.startsWith('!CUSTOM')) {
         const functionName = path.split('.')[1];
 
-        if (GLOBALCTX && GLOBALCTX[functionName]) {
-          const columnHeaderHelper = new DynamicColumnHeaders(headers);
-
-          const customParams = columnHeaderHelper.getMappedValues(
-            row,
-            functionName,
-            false
+        // Prevent invocation of built-in globals (eval, Function, Apps Script
+        // services, etc.). Only user-defined top-level functions are intended
+        // to be callable via the !CUSTOM mechanism.
+        if (
+          FORBIDDEN_GLOBALS.has(functionName) ||
+          !GLOBALCTX ||
+          typeof (GLOBALCTX as any)[functionName] !== 'function'
+        ) {
+          throw new Error(
+            `!CUSTOM function '${functionName}' is not an allowed user-defined function`
           );
-
-          // Update cell value using custom function
-          return (GLOBALCTX as any)[functionName](data, customParams);
         }
+
+        const columnHeaderHelper = new DynamicColumnHeaders(headers);
+
+        const customParams = columnHeaderHelper.getMappedValues(
+          row,
+          functionName,
+          false
+        );
+
+        // Update cell value using custom function
+        return (GLOBALCTX as any)[functionName](data, customParams);
       } else {
         // Update cell value from result using JPath
         return JPath.getValue(path, data);
